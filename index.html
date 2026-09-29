@@ -181,6 +181,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
   var $=function(id){return document.getElementById(id)};
   var last={next:0,nextName:''};
 
+  function monthTitle(){return MONTHS[S.month].toUpperCase()+' '+S.year}
   function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
   function pad(n){return n<10?'0'+n:''+n}
   function iso(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
@@ -321,7 +322,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
     $('nextBtn').disabled=false; $('dlPng').disabled=false; $('dlXlsx').disabled=false;
     var h='<table><tbody>';
     h+='<tr><th class="t1" colspan="'+r.len+'">'+esc(S.title)+'</th></tr>';
-    h+='<tr><th class="t2" colspan="'+r.len+'">'+MONTHS[S.month].toUpperCase()+'</th></tr>';
+    h+='<tr><th class="t2" colspan="'+r.len+'">'+monthTitle()+'</th></tr>';
     h+='<tr>';
     for(var k=0;k<r.len;k++){
       var wd=(r.startWd+k)%7;
@@ -426,7 +427,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
       }
       var y=0;
       box(0,y,W,hT); x.fillStyle='#000'; x.font='bold 26px '+FONT; x.textAlign='center'; x.fillText(S.title,W/2,y+hT/2+1); y+=hT;
-      box(0,y,W,hM); x.fillStyle='#000'; x.fillText(MONTHS[S.month].toUpperCase(),W/2,y+hM/2+1); y+=hM;
+      box(0,y,W,hM); x.fillStyle='#000'; x.fillText(monthTitle(),W/2,y+hM/2+1); y+=hM;
       x.textAlign='left'; x.font='bold 17px '+FONT;
       for(var k=0;k<len;k++){
         box(k*colW,y,colW,hH); x.fillStyle='#000'; x.fillText(dayName(r,k),k*colW+6,y+hH/2+1);
@@ -470,7 +471,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
       ws.getRow(row).height=h;
     }
     banner(1,S.title,32);
-    banner(2,MONTHS[S.month].toUpperCase(),30);
+    banner(2,monthTitle(),30);
     for(var k=0;k<len;k++){
       var h=ws.getCell(3,k+1);
       h.value=dayName(r,k); h.font={name:'Calibri',size:12,bold:true}; h.border=border;
@@ -499,13 +500,14 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
         ws.getCell(row,1).value='- '+l; ws.getCell(row,1).font={name:'Calibri',size:12}; row++;
       });
     }
-    var buf=await ws.xlsx.writeBuffer();
+    var buf=await wb.xlsx.writeBuffer();
     return new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
   }
   async function doExport(btn,ext,maker){
-    if(!dl||!getNames().length) return;
+    if(!getNames().length) return;
     btn.disabled=true; setMsg('Menyiapkan file...');
     try{
+      await ready;
       var blob=await maker();
       var name=fileBase()+'.'+ext;
       await dl.save({filename:name,data:blob});
@@ -521,13 +523,32 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
   }
   $('dlPng').addEventListener('click',function(){doExport(this,'png',makePng)});
   $('dlXlsx').addEventListener('click',function(){doExport(this,'xlsx',makeXlsx)});
+  function browserSave(o){
+    return new Promise(function(res,rej){
+      try{
+        var url=URL.createObjectURL(o.data), a=document.createElement('a');
+        a.href=url; a.download=o.filename; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function(){URL.revokeObjectURL(url)},4000);
+        res({status:'saved'});
+      }catch(e){rej({code:'unavailable'})}
+    });
+  }
+  var readyRes, ready=new Promise(function(r){readyRes=r});
   function initDownloads(){
-    try{
-      if(!window.claude||typeof window.claude.use!=='function') return;
-      window.claude.use('downloads').then(function(m){
-        if(m){dl=m;$('actions').hidden=false;}
-      }).catch(function(){});
-    }catch(e){}
+    /* Default: unduhan biasa lewat browser (GitHub Pages, file lokal, hosting lain). */
+    dl={save:browserSave};
+    $('actions').hidden=false;
+    if(location.protocol==='file:'){readyRes();return;}
+    /* Di dalam claude.ai, pakai fitur unduh bawaan bila tersedia. */
+    var tries=0;
+    (function wait(){
+      if(window.claude&&typeof window.claude.use==='function'){
+        window.claude.use('downloads').then(function(m){if(m) dl=m;}).catch(function(){}).then(readyRes);
+        return;
+      }
+      if(++tries>10){readyRes();return;}
+      setTimeout(wait,300);
+    })();
   }
 
   fillStatic();
