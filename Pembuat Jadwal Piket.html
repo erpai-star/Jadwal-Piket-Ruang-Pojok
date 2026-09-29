@@ -1,0 +1,540 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pembuat Jadwal Piket</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Archivo:wght@700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<style>
+:root{
+  --bg:#EEF0EA; --panel:#FBFBF8; --ink:#1B2521; --muted:#5E6B65; --line:#D3D8D0;
+  --field:#FFFFFF; --accent:#1F5F52; --accent-ink:#FFFFFF; --soft:#E3EBE6; --danger:#B3261E;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#141917; --panel:#1B221F; --ink:#E6EBE7; --muted:#95A39B; --line:#2F3A35;
+    --field:#141917; --accent:#5FBFA8; --accent-ink:#0E1512; --soft:#26312D; --danger:#F2867E;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#141917; --panel:#1B221F; --ink:#E6EBE7; --muted:#95A39B; --line:#2F3A35;
+  --field:#141917; --accent:#5FBFA8; --accent-ink:#0E1512; --soft:#26312D; --danger:#F2867E;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Figtree',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;font-size:15px;line-height:1.45}
+.wrap{max-width:1240px;margin:0 auto;padding:28px 20px 48px}
+h1{font-family:'Archivo','Arial Narrow',Arial,sans-serif;font-weight:800;font-size:30px;line-height:1.1;margin:0 0 6px;letter-spacing:-.01em}
+.lead-text{margin:0 0 24px;color:var(--muted);max-width:60ch}
+.layout{display:grid;grid-template-columns:minmax(300px,390px) minmax(0,1fr);gap:24px;align-items:start}
+@media (max-width:900px){.layout{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px}
+.panel + .panel{margin-top:16px}
+h2{font-size:16px;margin:0 0 12px;font-weight:700}
+label{display:block;font-size:13px;font-weight:600;margin:0 0 4px}
+.hint{font-size:12.5px;color:var(--muted);margin:6px 0 0}
+input[type=text],input[type=number],select,textarea{
+  width:100%;font:inherit;color:var(--ink);background:var(--field);border:1px solid var(--line);
+  border-radius:7px;padding:8px 10px;min-height:38px}
+textarea{resize:vertical;min-height:96px}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible,.sheet td.in:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.row{display:grid;gap:10px;grid-template-columns:1fr 1fr;margin-bottom:12px}
+.row.one{grid-template-columns:1fr}
+.field{margin-bottom:12px}
+.btn{font:inherit;font-weight:600;border-radius:7px;border:1px solid var(--line);background:var(--field);color:var(--ink);padding:8px 12px;min-height:38px;cursor:pointer}
+.btn:hover{background:var(--soft)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.icon{width:34px;min-height:34px;padding:0;display:inline-grid;place-items:center;font-size:15px;line-height:1}
+.btn.icon:disabled{opacity:.35;cursor:default}
+.btn.icon.del:hover{color:var(--danger)}
+/* names */
+#nameList{list-style:none;margin:0 0 10px;padding:0;display:grid;gap:6px}
+#nameList li{display:grid;grid-template-columns:24px 1fr auto auto auto;gap:6px;align-items:center}
+.no{color:var(--muted);font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+.addrow{display:flex;gap:8px}
+.check{display:flex;gap:8px;align-items:flex-start;font-weight:500;font-size:14px;margin:0}
+.check input{margin-top:3px;accent-color:var(--accent)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{display:inline-flex;align-items:center;gap:6px;background:var(--soft);border-radius:999px;padding:3px 4px 3px 10px;font-size:13px;font-weight:600}
+.chip button{border:0;background:transparent;color:var(--muted);cursor:pointer;border-radius:50%;width:22px;height:22px;font-size:14px;line-height:1}
+.chip button:hover{color:var(--danger)}
+/* preview */
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:12px}
+.bar h2{margin:0}
+.sheet-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:#fff}
+.sheet{background:#fff;color:#000;font-family:Calibri,Carlito,'Segoe UI',Arial,sans-serif;font-size:15px;min-width:640px;padding:0 0 8px}
+.sheet table{width:100%;border-collapse:collapse;table-layout:fixed}
+.sheet th,.sheet td{border:1px solid #000;padding:2px 5px;text-align:left;height:24px;vertical-align:middle}
+.sheet th.t1{text-align:center;font-size:22px;font-weight:700;height:36px}
+.sheet th.t2{text-align:center;font-size:22px;font-weight:700;height:34px}
+.sheet th.dh{font-weight:700}
+.sheet td.in{cursor:pointer}
+.sheet td.in:hover{background:#eaf3ef}
+.sheet td.lead,.sheet td.hol{background:#D0D0D0}
+.sheet td.hol{color:#C00000;font-weight:700}
+.sheet td.hol:hover{background:#c4c4c4}
+.notes{padding:10px 5px 0;line-height:1.55}
+.notes .nt{margin-bottom:2px}
+.empty{padding:40px 16px;text-align:center;color:#555}
+.tip{margin:0;font-size:13px;color:var(--muted)}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+.actions[hidden]{display:none}
+.foot{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-top:12px}
+.msg{margin:8px 2px 0;font-size:13px;color:var(--muted);min-height:1.2em}
+.btn:disabled{opacity:.45;cursor:default}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Pembuat jadwal piket</h1>
+  <p class="lead-text">Isi peserta, pilih bulan dan rentang hari, lalu tabel jadwal langsung tersusun berurutan mengikuti tanggal.</p>
+
+  <div class="layout">
+    <div>
+      <section class="panel" aria-labelledby="h-peserta">
+        <h2 id="h-peserta">Nama peserta</h2>
+        <ul id="nameList"></ul>
+        <div class="addrow">
+          <input type="text" id="newName" placeholder="Tambah nama (boleh banyak, pisah koma)" aria-label="Nama peserta baru">
+          <button class="btn primary" id="addBtn" type="button">Tambah</button>
+        </div>
+        <p class="hint">Urutan daftar = urutan giliran piket. Gunakan panah untuk mengubah urutan.</p>
+      </section>
+
+      <section class="panel" aria-labelledby="h-rentang">
+        <h2 id="h-rentang">Bulan dan rentang hari</h2>
+        <div class="row">
+          <div><label for="month">Bulan</label><select id="month"></select></div>
+          <div><label for="year">Tahun</label><input type="number" id="year" min="2000" max="2100"></div>
+        </div>
+        <div class="row">
+          <div><label for="startDay">Hari mulai</label><select id="startDay"></select></div>
+          <div><label for="endDay">Hari akhir</label><select id="endDay"></select></div>
+        </div>
+        <div class="row one">
+          <div><label for="first">Giliran pertama bulan ini</label><select id="first"></select>
+          <p class="hint">Atur agar urutan lanjut dari bulan sebelumnya.</p></div>
+        </div>
+        <div class="field">
+          <label class="check"><input type="checkbox" id="adjacent"> <span>Tampilkan tanggal bulan sebelumnya di minggu pertama (abu-abu)</span></label>
+        </div>
+        <div>
+          <label>Tanggal libur</label>
+          <div class="chips" id="chips"></div>
+          <p class="hint" id="holHint">Klik tanggal di tabel untuk menandai libur. Tanggal libur dilewati dan tidak memakai giliran.</p>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="h-notes">
+        <h2 id="h-notes">Judul dan catatan</h2>
+        <div class="field"><label for="title">Judul jadwal</label><input type="text" id="title"></div>
+        <div class="field" style="margin-bottom:0"><label for="notes">Catatan (satu baris = satu poin)</label><textarea id="notes"></textarea></div>
+      </section>
+    </div>
+
+    <section aria-labelledby="h-preview">
+      <div class="bar">
+        <h2 id="h-preview">Pratinjau jadwal</h2>
+        <div class="actions" id="actions" hidden>
+          <button class="btn primary" id="dlPng" type="button">Unduh gambar (PNG)</button>
+          <button class="btn primary" id="dlXlsx" type="button">Unduh Excel (.xlsx)</button>
+        </div>
+      </div>
+      <div class="sheet-wrap"><div class="sheet" id="sheet"></div></div>
+      <div class="foot">
+        <p class="tip" id="tip"></p>
+        <button class="btn" id="nextBtn" type="button">Lanjut ke bulan berikutnya</button>
+      </div>
+      <p class="msg" id="msg" role="status" aria-live="polite"></p>
+    </section>
+  </div>
+</div>
+
+<script>
+(function(){
+  var MONTHS=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+  var DAYS=[{n:'Senin',d:1},{n:'Selasa',d:2},{n:'Rabu',d:3},{n:'Kamis',d:4},{n:'Jumat',d:5},{n:'Sabtu',d:6},{n:'Minggu',d:0}];
+  var KEY='piket-v1';
+  var now=new Date();
+  var S={
+    title:'JADWAL PIKET RUANG KLAES',
+    names:['Andit','David','Tri','Lilik','Irsyad','Herri','Sabil'],
+    month:now.getMonth(), year:now.getFullYear(),
+    startDay:0, endDay:5, first:0, adjacent:true, holidays:[],
+    notes:'Piket Area Office KLAES & AI\nPJ Harian Bertugas Mengawasi Jatahnya 5S Harian di Office KLAES & AI\nDenda Tidak Piket Senilai Rp30.000 (Kecuali Cuti/Sakit)'
+  };
+  try{
+    var raw=localStorage.getItem(KEY);
+    if(raw){var p=JSON.parse(raw); if(p&&Array.isArray(p.names)){S=Object.assign(S,p);}}
+  }catch(e){}
+  if(!(S.month>=0&&S.month<=11)) S.month=now.getMonth();
+  if(!(S.year>=2000&&S.year<=2100)) S.year=now.getFullYear();
+  if(!Array.isArray(S.holidays)) S.holidays=[];
+
+  var $=function(id){return document.getElementById(id)};
+  var last={next:0,nextName:''};
+
+  function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+  function pad(n){return n<10?'0'+n:''+n}
+  function iso(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+  function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+  function getNames(){return S.names.map(function(n){return n.trim()}).filter(Boolean)}
+
+  /* ---------- names list ---------- */
+  function renderNames(){
+    var ul=$('nameList'); ul.innerHTML='';
+    S.names.forEach(function(n,i){
+      var li=document.createElement('li');
+      li.innerHTML='<span class="no">'+(i+1)+'</span>'+
+        '<input type="text" value="'+esc(n)+'" data-i="'+i+'" aria-label="Nama peserta '+(i+1)+'">'+
+        '<button type="button" class="btn icon" data-up="'+i+'" aria-label="Naikkan"'+(i===0?' disabled':'')+'>↑</button>'+
+        '<button type="button" class="btn icon" data-down="'+i+'" aria-label="Turunkan"'+(i===S.names.length-1?' disabled':'')+'>↓</button>'+
+        '<button type="button" class="btn icon del" data-del="'+i+'" aria-label="Hapus">✕</button>';
+      ul.appendChild(li);
+    });
+  }
+  $('nameList').addEventListener('input',function(e){
+    var i=e.target.getAttribute('data-i');
+    if(i===null) return;
+    S.names[+i]=e.target.value;
+    refresh(false);
+  });
+  $('nameList').addEventListener('click',function(e){
+    var b=e.target.closest('button'); if(!b) return;
+    var up=b.getAttribute('data-up'), dn=b.getAttribute('data-down'), del=b.getAttribute('data-del');
+    if(up!==null){var i=+up; if(i>0){var t=S.names[i];S.names[i]=S.names[i-1];S.names[i-1]=t;}}
+    else if(dn!==null){var j=+dn; if(j<S.names.length-1){var u=S.names[j];S.names[j]=S.names[j+1];S.names[j+1]=u;}}
+    else if(del!==null){S.names.splice(+del,1);}
+    renderNames(); refresh(false);
+  });
+  function addNames(){
+    var v=$('newName').value;
+    var parts=v.split(/[\n,]+/).map(function(s){return s.trim()}).filter(Boolean);
+    if(!parts.length) return;
+    S.names=S.names.concat(parts);
+    $('newName').value='';
+    renderNames(); refresh(false);
+    $('newName').focus();
+  }
+  $('addBtn').addEventListener('click',addNames);
+  $('newName').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();addNames();}});
+
+  /* ---------- selectors ---------- */
+  function fillStatic(){
+    $('month').innerHTML=MONTHS.map(function(m,i){return '<option value="'+i+'">'+m+'</option>'}).join('');
+    var dayOpts=DAYS.map(function(d,i){return '<option value="'+i+'">'+d.n+'</option>'}).join('');
+    $('startDay').innerHTML=dayOpts; $('endDay').innerHTML=dayOpts;
+    $('month').value=S.month; $('year').value=S.year;
+    $('startDay').value=S.startDay; $('endDay').value=S.endDay;
+    $('adjacent').checked=!!S.adjacent;
+    $('title').value=S.title; $('notes').value=S.notes;
+  }
+  function renderFirst(){
+    var names=getNames();
+    if(S.first>=names.length||S.first<0) S.first=0;
+    $('first').innerHTML=names.map(function(n,i){return '<option value="'+i+'">'+esc(n)+'</option>'}).join('');
+    $('first').value=S.first;
+  }
+  $('month').addEventListener('change',function(){S.month=+this.value;refresh(false)});
+  $('year').addEventListener('input',function(){var y=+this.value;if(y>=2000&&y<=2100){S.year=y;refresh(false)}});
+  $('startDay').addEventListener('change',function(){S.startDay=+this.value;refresh(false)});
+  $('endDay').addEventListener('change',function(){S.endDay=+this.value;refresh(false)});
+  $('first').addEventListener('change',function(){S.first=+this.value;refresh(false)});
+  $('adjacent').addEventListener('change',function(){S.adjacent=this.checked;refresh(false)});
+  $('title').addEventListener('input',function(){S.title=this.value;refresh(false)});
+  $('notes').addEventListener('input',function(){S.notes=this.value;refresh(false)});
+
+  /* ---------- holidays ---------- */
+  function toggleHoliday(key){
+    var i=S.holidays.indexOf(key);
+    if(i>=0) S.holidays.splice(i,1); else S.holidays.push(key);
+    refresh(false);
+  }
+  function renderChips(){
+    var prefix=S.year+'-'+pad(S.month+1)+'-';
+    var list=S.holidays.filter(function(k){return k.indexOf(prefix)===0}).sort();
+    $('chips').innerHTML=list.map(function(k){
+      var d=+k.slice(8);
+      return '<span class="chip">'+d+' '+MONTHS[S.month].slice(0,3)+'<button type="button" data-h="'+k+'" aria-label="Hapus libur tanggal '+d+'">✕</button></span>';
+    }).join('');
+  }
+  $('chips').addEventListener('click',function(e){
+    var b=e.target.closest('button'); if(!b) return;
+    toggleHoliday(b.getAttribute('data-h'));
+  });
+
+  /* ---------- schedule build ---------- */
+  function build(){
+    var names=getNames(), n=names.length;
+    var m=S.month,y=S.year;
+    var startWd=DAYS[S.startDay].d, endWd=DAYS[S.endDay].d;
+    var len=((endWd-startWd+7)%7)+1;
+    var firstDate=new Date(y,m,1), lastDate=new Date(y,m+1,0);
+    var back=(firstDate.getDay()-startWd+7)%7;
+    var ws=new Date(y,m,1-back);
+    var weeks=[];
+    while(ws<=lastDate){
+      var cells=[],hasIn=false;
+      for(var k=0;k<len;k++){
+        var dt=new Date(ws.getFullYear(),ws.getMonth(),ws.getDate()+k);
+        var type=dt<firstDate?'lead':(dt>lastDate?'trail':'in');
+        if(type==='in') hasIn=true;
+        cells.push({date:dt,type:type,name:null,hol:false});
+      }
+      if(hasIn) weeks.push(cells);
+      ws=new Date(ws.getFullYear(),ws.getMonth(),ws.getDate()+7);
+    }
+    var flat=[].concat.apply([],weeks);
+    var idx=S.first, leads=[];
+    flat.forEach(function(c){
+      if(c.type==='lead'){leads.push(c);return;}
+      if(c.type!=='in') return;
+      if(S.holidays.indexOf(iso(c.date))>=0){c.hol=true;return;}
+      if(n>0){c.name=names[idx%n];idx++;}
+    });
+    if(n>0){
+      var j=S.first-1;
+      for(var q=leads.length-1;q>=0;q--){
+        leads[q].name=names[((j%n)+n)%n]; j--;
+      }
+    }
+    var next=n>0?idx%n:0;
+    return {weeks:weeks,len:len,startWd:startWd,next:next,nextName:n>0?names[next]:'',n:n};
+  }
+
+  function renderSheet(){
+    var r=build();
+    last.next=r.next; last.nextName=r.nextName;
+    var sheet=$('sheet');
+    if(!r.n){
+      sheet.innerHTML='<div class="empty">Tambahkan minimal satu nama peserta untuk menyusun jadwal.</div>';
+      $('nextBtn').disabled=true; $('dlPng').disabled=true; $('dlXlsx').disabled=true; $('tip').textContent='';
+      return;
+    }
+    $('nextBtn').disabled=false; $('dlPng').disabled=false; $('dlXlsx').disabled=false;
+    var h='<table><tbody>';
+    h+='<tr><th class="t1" colspan="'+r.len+'">'+esc(S.title)+'</th></tr>';
+    h+='<tr><th class="t2" colspan="'+r.len+'">'+MONTHS[S.month].toUpperCase()+'</th></tr>';
+    h+='<tr>';
+    for(var k=0;k<r.len;k++){
+      var wd=(r.startWd+k)%7;
+      var nm=DAYS.filter(function(d){return d.d===wd})[0].n.toUpperCase();
+      h+='<th class="dh">'+nm+'</th>';
+    }
+    h+='</tr>';
+    r.weeks.forEach(function(w){
+      h+='<tr>';
+      w.forEach(function(c){
+        var d=c.date.getDate();
+        if(c.type==='in'){
+          var key=iso(c.date);
+          h+='<td class="in'+(c.hol?' hol':'')+'" data-k="'+key+'" tabindex="0" role="button" aria-pressed="'+c.hol+'" title="Klik untuk '+(c.hol?'batalkan':'tandai')+' libur">('+d+')'+(c.hol?'':' '+esc(c.name.toUpperCase()))+'</td>';
+        }else if(c.type==='lead'&&S.adjacent&&c.name){
+          h+='<td class="lead">('+d+') '+esc(c.name.toUpperCase())+'</td>';
+        }else{
+          h+='<td></td>';
+        }
+      });
+      h+='</tr>';
+    });
+    h+='</tbody></table>';
+    var lines=S.notes.split('\n').map(function(s){return s.trim()}).filter(Boolean);
+    if(lines.length){
+      h+='<div class="notes"><div class="nt">NOTES:</div>'+lines.map(function(l){return '<div class="nt">- '+esc(l)+'</div>'}).join('')+'</div>';
+    }
+    sheet.innerHTML=h;
+    var nm2=r.nextName.toUpperCase();
+    $('tip').textContent='Giliran berikutnya (bulan depan) dimulai dari '+nm2+'.';
+    $('nextBtn').textContent='Lanjut ke bulan berikutnya (mulai '+nm2+')';
+  }
+  $('sheet').addEventListener('click',function(e){
+    var td=e.target.closest('td.in'); if(td) toggleHoliday(td.getAttribute('data-k'));
+  });
+  $('sheet').addEventListener('keydown',function(e){
+    if(e.key!=='Enter'&&e.key!==' ') return;
+    var td=e.target.closest('td.in'); if(!td) return;
+    e.preventDefault(); toggleHoliday(td.getAttribute('data-k'));
+  });
+
+  $('nextBtn').addEventListener('click',function(){
+    var f=last.next;
+    S.month++; if(S.month>11){S.month=0;S.year++;}
+    S.first=f;
+    $('month').value=S.month; $('year').value=S.year;
+    refresh(true);
+  });
+
+  function refresh(){
+    renderFirst();
+    $('first').value=S.first;
+    renderChips();
+    renderSheet();
+    save();
+  }
+
+  /* ---------- export ---------- */
+  var dl=null;
+  var FONT='Calibri, Carlito, "Segoe UI", Arial, sans-serif';
+  function setMsg(t){$('msg').textContent=t}
+  function fileBase(){return 'jadwal-piket-'+MONTHS[S.month].toLowerCase()+'-'+S.year}
+  function cellText(c){
+    var d=c.date.getDate();
+    if(c.type==='in') return c.hol?'('+d+')':'('+d+') '+c.name.toUpperCase();
+    if(c.type==='lead'&&S.adjacent&&c.name) return '('+d+') '+c.name.toUpperCase();
+    return '';
+  }
+  function cellKind(c){
+    if(c.type==='in') return c.hol?'hol':'in';
+    if(c.type==='lead'&&S.adjacent&&c.name) return 'lead';
+    return 'blank';
+  }
+  function noteLines(){return S.notes.split('\n').map(function(s){return s.trim()}).filter(Boolean)}
+  function dayName(r,k){
+    var wd=(r.startWd+k)%7;
+    return DAYS.filter(function(d){return d.d===wd})[0].n.toUpperCase();
+  }
+  function makePng(){
+    return new Promise(function(resolve,reject){
+      var r=build(), len=r.len, sc=2, M=16;
+      var probe=document.createElement('canvas').getContext('2d');
+      var rows=r.weeks.map(function(w){return w.map(function(c){return {t:cellText(c),k:cellKind(c)}})});
+      probe.font='bold 17px '+FONT;
+      var colW=140;
+      rows.forEach(function(w){w.forEach(function(c){colW=Math.max(colW,Math.ceil(probe.measureText(c.t).width+16))})});
+      probe.font='bold 26px '+FONT;
+      colW=Math.max(colW,Math.ceil((probe.measureText(S.title).width+40)/len));
+      var W=colW*len, hT=46, hM=42, hH=32, hR=32, notes=noteLines();
+      var hN=notes.length?16+(notes.length+1)*26:0;
+      var H=hT+hM+hH+rows.length*hR+hN;
+      var cv=document.createElement('canvas');
+      cv.width=(W+2*M)*sc; cv.height=(H+2*M)*sc;
+      var x=cv.getContext('2d');
+      x.scale(sc,sc);
+      x.fillStyle='#fff'; x.fillRect(0,0,W+2*M,H+2*M);
+      x.translate(M,M);
+      x.strokeStyle='#000'; x.lineWidth=1; x.textBaseline='middle';
+      function box(px,py,w,h,fill){
+        if(fill){x.fillStyle=fill;x.fillRect(px,py,w,h);}
+        x.strokeRect(px+.5,py+.5,w,h);
+      }
+      var y=0;
+      box(0,y,W,hT); x.fillStyle='#000'; x.font='bold 26px '+FONT; x.textAlign='center'; x.fillText(S.title,W/2,y+hT/2+1); y+=hT;
+      box(0,y,W,hM); x.fillStyle='#000'; x.fillText(MONTHS[S.month].toUpperCase(),W/2,y+hM/2+1); y+=hM;
+      x.textAlign='left'; x.font='bold 17px '+FONT;
+      for(var k=0;k<len;k++){
+        box(k*colW,y,colW,hH); x.fillStyle='#000'; x.fillText(dayName(r,k),k*colW+6,y+hH/2+1);
+      }
+      y+=hH;
+      rows.forEach(function(w){
+        w.forEach(function(c,k){
+          box(k*colW,y,colW,hR,(c.k==='lead'||c.k==='hol')?'#D0D0D0':null);
+          if(c.t){
+            x.font=(c.k==='hol'?'bold ':'')+'17px '+FONT;
+            x.fillStyle=c.k==='hol'?'#C00000':'#000';
+            x.fillText(c.t,k*colW+6,y+hR/2+1);
+          }
+        });
+        y+=hR;
+      });
+      if(notes.length){
+        y+=16; x.fillStyle='#000'; x.font='17px '+FONT;
+        x.fillText('NOTES:',6,y+13); y+=26;
+        notes.forEach(function(l){x.fillText('- '+l,6,y+13); y+=26;});
+      }
+      cv.toBlob(function(b){b?resolve(b):reject(new Error('png'))},'image/png');
+    });
+  }
+  async function makeXlsx(){
+    if(!window.ExcelJS) throw {code:'lib'};
+    var r=build(), len=r.len;
+    var wb=new ExcelJS.Workbook();
+    var ws=wb.addWorksheet(MONTHS[S.month]);
+    ws.pageSetup={orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0};
+    for(var i=1;i<=len;i++) ws.getColumn(i).width=24;
+    var bl={style:'thin',color:{argb:'FF000000'}};
+    var border={top:bl,left:bl,bottom:bl,right:bl};
+    var grey={type:'pattern',pattern:'solid',fgColor:{argb:'FFD0D0D0'}};
+    function banner(row,text,h){
+      ws.mergeCells(row,1,row,len);
+      var c=ws.getCell(row,1);
+      c.value=text; c.font={name:'Calibri',size:18,bold:true};
+      c.alignment={horizontal:'center',vertical:'middle'};
+      for(var i=1;i<=len;i++) ws.getCell(row,i).border=border;
+      ws.getRow(row).height=h;
+    }
+    banner(1,S.title,32);
+    banner(2,MONTHS[S.month].toUpperCase(),30);
+    for(var k=0;k<len;k++){
+      var h=ws.getCell(3,k+1);
+      h.value=dayName(r,k); h.font={name:'Calibri',size:12,bold:true}; h.border=border;
+      h.alignment={vertical:'middle'};
+    }
+    ws.getRow(3).height=22;
+    var row=4;
+    r.weeks.forEach(function(w){
+      w.forEach(function(c,k){
+        var cell=ws.getCell(row,k+1), kind=cellKind(c);
+        cell.value=cellText(c)||null;
+        cell.border=border;
+        cell.alignment={vertical:'middle'};
+        cell.font={name:'Calibri',size:12,bold:kind==='hol',color:{argb:kind==='hol'?'FFC00000':'FF000000'}};
+        if(kind==='hol'||kind==='lead') cell.fill=grey;
+      });
+      ws.getRow(row).height=22;
+      row++;
+    });
+    var notes=noteLines();
+    if(notes.length){
+      row++;
+      ws.getCell(row,1).value='NOTES:'; ws.getCell(row,1).font={name:'Calibri',size:12};
+      row++;
+      notes.forEach(function(l){
+        ws.getCell(row,1).value='- '+l; ws.getCell(row,1).font={name:'Calibri',size:12}; row++;
+      });
+    }
+    var buf=await ws.xlsx.writeBuffer();
+    return new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  }
+  async function doExport(btn,ext,maker){
+    if(!dl||!getNames().length) return;
+    btn.disabled=true; setMsg('Menyiapkan file...');
+    try{
+      var blob=await maker();
+      var name=fileBase()+'.'+ext;
+      await dl.save({filename:name,data:blob});
+      setMsg('Tersimpan: '+name);
+    }catch(e){
+      var c=e&&e.code;
+      setMsg(c==='declined'?'Unduhan dibatalkan.':
+             c==='rate_limited'?'Tunggu sebentar, lalu coba lagi.':
+             c==='lib'?'Pustaka Excel gagal dimuat. Muat ulang halaman lalu coba lagi.':
+             'Gagal membuat file. Coba lagi.');
+    }
+    btn.disabled=false;
+  }
+  $('dlPng').addEventListener('click',function(){doExport(this,'png',makePng)});
+  $('dlXlsx').addEventListener('click',function(){doExport(this,'xlsx',makeXlsx)});
+  function initDownloads(){
+    try{
+      if(!window.claude||typeof window.claude.use!=='function') return;
+      window.claude.use('downloads').then(function(m){
+        if(m){dl=m;$('actions').hidden=false;}
+      }).catch(function(){});
+    }catch(e){}
+  }
+
+  fillStatic();
+  renderNames();
+  refresh();
+  initDownloads();
+})();
+</script>
+</body>
+</html>
